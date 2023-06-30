@@ -15,10 +15,16 @@ class TranslationSchema(t.TypedDict):
     sense: t.NotRequired[str]   # If `None`, treat as equal to `word`.
 
 
+class SynonymSchema(t.TypedDict):
+    """Schema for values inside .senses[*].synonyms."""
+    word: str
+
+
 class SenseSchema(t.TypedDict):
     """Schema for values inside .senses."""
-    # There are other fields, but we only need the translations.
+    # There are other fields, but we only need translations and synonyms.
     translations: t.NotRequired[list[TranslationSchema]]
+    synonyms: t.NotRequired[list[SynonymSchema]]
 
 
 class Schema(t.TypedDict):
@@ -31,4 +37,4 @@ class Schema(t.TypedDict):
     translations: t.NotRequired[list[TranslationSchema]]
 
 
-__all__ = ["Schema", "SenseSchema", "TranslationSchema"]
+__all__ = ["Schema", "SenseSchema", "SynonymSchema", "TranslationSchema"]

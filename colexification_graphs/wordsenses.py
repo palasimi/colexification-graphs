@@ -14,7 +14,12 @@ import typing as t
 
 from orjson import loads    # pylint: disable=no-name-in-module
 
-from colexification_graphs.schema import Schema, SenseSchema, TranslationSchema
+from colexification_graphs.schema import (
+    Schema,
+    SenseSchema,
+    SynonymSchema,
+    TranslationSchema,
+)
 
 
 TranslationError: t.TypeAlias = t.Literal[
@@ -40,6 +45,18 @@ def get_words(dictionary: Path) -> t.Iterator[Schema]:
 def get_word_senses(data: Schema) -> t.Iterator[SenseSchema]:
     """Get different senses of word."""
     yield from data["senses"]
+
+
+def get_synonyms(sense: SenseSchema) -> list[SynonymSchema]:
+    """Get synonyms from word sense."""
+    synonyms = []
+    for synonym in sense.get("synonyms", []):
+        # If there's an error in one synonym, there's probably an error in
+        # other synonyms, too.
+        if not synonym["word"]:
+            return []
+        synonyms.append(synonym)
+    return synonyms
 
 
 def warn(
@@ -78,6 +95,7 @@ def get_translations(data: Schema) -> t.Iterator[TranslationSchema]:
     word and sense values.
     A word is not considered a translation of itself.
     """
+    language_name = data["lang"]
     language = data["lang_code"]
     word = data["word"]
 
@@ -90,6 +108,14 @@ def get_translations(data: Schema) -> t.Iterator[TranslationSchema]:
         yield translation
 
     for sense in get_word_senses(data):
+        # Get sense description of first translation.
+        # The translations may have different senses, but the assumption is
+        # they're all roughly the same.
+        # But to be sure, we won't change the sense values of translations.
+        # We'll only use `sense_description` for synonyms.
+        sense_description = None
+
+        # Yield translations.
         for translation in sense.get("translations", []):
             error = check_translation(translation)
             if error is not None:
@@ -97,6 +123,20 @@ def get_translations(data: Schema) -> t.Iterator[TranslationSchema]:
             if error in ("missing-code", "missing-word"):
                 continue
             yield translation
+
+            # Set sense description.
+            if sense_description is None:
+                sense_description = translation.get("sense")
+
+        # Treat synonyms as translations.
+        if sense_description is not None:
+            for synonym in get_synonyms(sense):
+                yield {
+                    "lang": language_name,
+                    "code": language,
+                    "word": synonym["word"],
+                    "sense": sense_description,
+                }
 
 
 def fix_whitespace(text: str) -> tuple[bool, str]:
