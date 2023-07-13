@@ -2,7 +2,7 @@
 # Copyright 2023 Levi Gruspe
 # See https://www.gnu.org/licenses/gpl-3.0.en.html
 
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code, too-many-locals
 """Build colexification graph."""
 
 from argparse import ArgumentParser, Namespace
@@ -16,7 +16,7 @@ import typing as t
 Language: t.TypeAlias = str
 Word: t.TypeAlias = str
 Translation: t.TypeAlias = tuple[Language, Word]
-Sense: t.TypeAlias = tuple[str, str]
+Sense: t.TypeAlias = tuple[str, str, str]   # ID, word and description
 Edge: t.TypeAlias = tuple[Sense, Sense]
 
 
@@ -88,9 +88,9 @@ def write_graph(graph: Counter[Edge]) -> None:
     """Write graph to stdout in TSV format."""
     out = writer(sys.stdout, delimiter="\t")
     for (source, target), weight in graph.most_common():
-        sense_s, gloss_s = source
-        sense_t, gloss_t = target
-        row = (sense_s, gloss_s, sense_t, gloss_t, weight)
+        id_s, sense_s, gloss_s = source
+        id_t, sense_t, gloss_t = target
+        row = (id_s, sense_s, gloss_s, id_t, sense_t, gloss_t, weight)
         out.writerow(row)
 
 
@@ -98,10 +98,11 @@ def main(args: Namespace) -> None:
     """Script entrypoint."""
     translation_senses: dict[Translation, set[Sense]] = {}
     sense_languages: dict[Sense, set[Language]] = {}
-    for language, word, _, sense, gloss in get_rows(args.tsv, silent=True):
+    for language, word, id_, sense, gloss in get_rows(args.tsv, silent=True):
         translation = (language, word)
-        translation_senses.setdefault(translation, set()).add((sense, gloss))
-        sense_languages.setdefault((sense, gloss), set()).add(language)
+        concept = (id_, sense, gloss)
+        translation_senses.setdefault(translation, set()).add(concept)
+        sense_languages.setdefault(concept, set()).add(language)
 
     # Only include word senses that are translated in enough languages.
     senses = {
