@@ -6,8 +6,8 @@ Colexification graphs extracted from Wiktionary.
 
 A colexification graph is an undirected graph.
 
-- Nodes represent meanings/sense-annotated words.
-- The weight of an edge between two nodes is the number of languages where the same word is used for both meanings.
+- Nodes represent concepts/sense-annotated words.
+- The weight of an edge between two nodes is the number of languages where the same word is used for both concepts.
 
 ## Format
 
@@ -15,11 +15,13 @@ The graphs are available in TSV and JSON formats.
 
 TSV columns:
 
-1. node 1 word
-2. node 1 sense
-3. node 2 word
-4. node 2 sense
-5. weight of edge between node 1 and node 2
+1. node 1 ID
+2. node 1 word
+3. node 1 sense
+4. node 2 ID
+5. node 2 word
+6. node 2 sense
+7. weight of edge between node 1 and node 2
 
 The JSON file is compatible with [Cytoscape.js](https://js.cytoscape.org/).
 
