@@ -2,7 +2,7 @@
 # Copyright 2023 Levi Gruspe
 # See https://www.gnu.org/licenses/gpl-3.0.en.html
 
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name, duplicate-code
 """Extract sense-annotated words from Wiktionary data."""
 
 from argparse import ArgumentParser, Namespace
@@ -14,6 +14,7 @@ import typing as t
 
 from orjson import loads    # pylint: disable=no-name-in-module
 
+from colexification_graphs.ids import compute_concept_id
 from colexification_graphs.schema import (
     Schema,
     SenseSchema,
@@ -161,11 +162,35 @@ def fix_whitespace(text: str) -> tuple[bool, str]:
     return ok, text
 
 
-def get_records(dictionary: Path) -> t.Iterator[tuple[str, str, str, str]]:
+def get_records(
+    dictionary: Path,
+) -> t.Iterator[tuple[str, str, str, str, str]]:
     """Get relevant records from the kaikki dictionary.
 
-    Generates 4-tuples: (language, word, sense, gloss).
+    Generates 5-tuples:
+    - language code
+    - word
+    - concept ID
+    - concept word
+    - concept description
     """
+    Concept: t.TypeAlias = tuple[str, str]
+    ids: dict[Concept, str] = {}
+
+    def compute_id(word: str, gloss: str) -> str:
+        """Compute concept ID.
+
+        IDs are cached.
+        """
+        concept = (word, gloss)
+        id_ = ids.get(concept)
+        if id_ is not None:
+            return id_
+
+        id_ = compute_concept_id(word, gloss)
+        ids[concept] = id_
+        return id_
+
     for data in get_words(dictionary):
         word = data["word"]
         language = data["lang_code"]
@@ -176,10 +201,16 @@ def get_records(dictionary: Path) -> t.Iterator[tuple[str, str, str, str]]:
             if gloss == "Translations":
                 gloss = word
             glosses.add(gloss)
-            yield translation["code"], translation["word"], word, gloss
+            yield (
+                translation["code"],
+                translation["word"],
+                compute_id(word, gloss),
+                word,
+                gloss,
+            )
 
         for gloss in glosses:
-            yield language, word, word, gloss
+            yield language, word, compute_id(word, gloss), word, gloss
 
 
 def write_rows(rows: t.Iterable[tuple[str, ...]]) -> None:

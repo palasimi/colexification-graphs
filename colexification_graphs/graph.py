@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright 2023 Levi Gruspe
 # See https://www.gnu.org/licenses/gpl-3.0.en.html
+
+# pylint: disable=duplicate-code
 """Build colexification graph."""
 
 from argparse import ArgumentParser, Namespace
@@ -46,7 +48,10 @@ def parse_args() -> Namespace:
     parser.add_argument(
         "tsv",
         type=Path,
-        help="path to TSV file (columns: language, word, sense, gloss)",
+        help=(
+            "path to TSV file "
+            "(columns: language, word, concept ID, sense, gloss)"
+        ),
     )
     args = parser.parse_args()
     args.edge_cutoff = args.edge_cutoff[0]
@@ -61,7 +66,7 @@ class InvalidRecord(Exception):
 def get_rows(
     tsv: Path,
     silent: bool = True,
-) -> t.Iterator[tuple[str, str, str, str]]:
+) -> t.Iterator[tuple[str, str, str, str, str]]:
     """Read rows from TSV file.
 
     If `silent` is `True`, silently ignores invalid rows.
@@ -70,13 +75,13 @@ def get_rows(
     with open(tsv, encoding="utf-8") as file:
         for row in reader(file, delimiter="\t"):
             try:
-                language, word, sense, gloss = row
+                language, word, id_, sense, gloss = row
             except ValueError as exc:
                 if silent:
                     continue
                 raise InvalidRecord from exc
 
-            yield language, word, sense, gloss
+            yield language, word, id_, sense, gloss
 
 
 def write_graph(graph: Counter[Edge]) -> None:
@@ -93,7 +98,7 @@ def main(args: Namespace) -> None:
     """Script entrypoint."""
     translation_senses: dict[Translation, set[Sense]] = {}
     sense_languages: dict[Sense, set[Language]] = {}
-    for language, word, sense, gloss in get_rows(args.tsv, silent=True):
+    for language, word, _, sense, gloss in get_rows(args.tsv, silent=True):
         translation = (language, word)
         translation_senses.setdefault(translation, set()).add((sense, gloss))
         sense_languages.setdefault((sense, gloss), set()).add(language)
