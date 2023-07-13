@@ -8,9 +8,7 @@ from csv import reader
 from pathlib import Path
 import sys
 
-from base58 import b58encode
-
-from colexification_graphs.fnv import fnv_1a_64 as fnv_hash
+from colexification_graphs.ids import compute_concept_id
 
 
 def parse_args() -> Namespace:
@@ -35,8 +33,7 @@ def main(args: Namespace) -> None:
     # Compute IDs.
     ids: dict[str, set[tuple[str, str]]] = {}
     for concept in concepts:
-        key = f"{concept[0]}\t{concept[1]}".encode()
-        id_ = b58encode(fnv_hash(key)).decode()
+        id_ = compute_concept_id(concept[0], concept[1])
         ids.setdefault(id_, set()).add(concept)
 
     # Look for collisions.
